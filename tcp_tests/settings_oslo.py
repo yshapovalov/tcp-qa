@@ -26,21 +26,26 @@ print ("\n" + "-" * 10 + " Initialize oslo.config variables with defaults"
        " from environment" + "-" * 10)
 
 _default_conf = pkg_resources.resource_filename(
-    __name__, 'templates/underlay/{0}.yaml'.format(settings.LAB_CONFIG_NAME))
+    __name__, 'templates/{0}/underlay.yaml'.format(settings.LAB_CONFIG_NAME))
 
 _default_salt_steps = pkg_resources.resource_filename(
-    __name__, 'templates/salt/{0}-salt.yaml'.format(settings.LAB_CONFIG_NAME))
+    __name__, 'templates/{0}/salt.yaml'.format(settings.LAB_CONFIG_NAME))
 _default_common_services_steps = pkg_resources.resource_filename(
     __name__,
-    'templates/common-services/{0}-common-services.yaml'.format(
+    'templates/{0}/common-services.yaml'.format(
         settings.LAB_CONFIG_NAME))
 _default_openstack_steps = pkg_resources.resource_filename(
-    __name__, 'templates/openstack/{0}-openstack.yaml'.format(
+    __name__, 'templates/{0}/openstack.yaml'.format(
         settings.LAB_CONFIG_NAME))
 _default_opencontrail_prepare_tests_steps_path = pkg_resources.resource_filename(
-    __name__, 'templates/opencontrail/{0}-opencontrail.yaml'.format(
+    __name__, 'templates/{0}/opencontrail.yaml'.format(
         settings.LAB_CONFIG_NAME))
-
+_default_sl_prepare_tests_steps_path = pkg_resources.resource_filename(
+    __name__, 'templates/{0}/sl.yaml'.format(
+        settings.LAB_CONFIG_NAME))
+_default_virtlet_prepare_tests_steps_path = pkg_resources.resource_filename(
+    __name__, 'templates/{0}/virtlet.yaml'.format(
+        settings.LAB_CONFIG_NAME))
 
 hardware_opts = [
     ct.Cfg('manager', ct.String(),
@@ -69,6 +74,9 @@ underlay_opts = [
            help="Node roles managed by underlay in the environment",
            default=[ext.UNDERLAY_NODE_ROLES.salt_master,
                     ext.UNDERLAY_NODE_ROLES.salt_minion, ]),
+    ct.Cfg('bootstrap_timeout', ct.Integer(),
+           help="Timeout of waiting SSH for nodes with specified roles",
+           default=480),
     ct.Cfg('nameservers', ct.JSONList(),
            help="IP addresses of DNS servers",
            default=[]),
@@ -77,6 +85,12 @@ underlay_opts = [
            default=[]),
     ct.Cfg('lvm', ct.JSONDict(),
            help="LVM settings for Underlay", default={}),
+    ct.Cfg('address_pools', ct.JSONDict(),
+           help="""Address pools (dynamically) allocated for the environment.
+                   May be used to determine CIDR for a specific network from
+                   tests or during the deployment process.
+                   {'pool_name1': '<cidr>', 'pool_name2': '<cidr>', ...}""",
+           default={}),
 ]
 
 
@@ -88,6 +102,8 @@ salt_deploy_opts = [
 salt_opts = [
     ct.Cfg('salt_master_host', ct.IPAddress(),
            help="", default='0.0.0.0'),
+    ct.Cfg('salt_master_port', ct.String(),
+           help="", default='6969'),
 ]
 
 common_services_deploy_opts = [
@@ -123,6 +139,27 @@ opencontrail_opts = [
            default=_default_opencontrail_prepare_tests_steps_path),
 ]
 
+sl_deploy_opts = [
+    ct.Cfg('sl_steps_path', ct.String(),
+           help="Path to YAML with steps to deploy sl",
+           default=_default_sl_prepare_tests_steps_path),
+]
+sl_opts = [
+    ct.Cfg('sl_installed', ct.Boolean(),
+           help="", default=False),
+]
+
+virtlet_deploy_opts = [
+    ct.Cfg('virtlet_steps_path', ct.String(),
+           help="Path to YAML with steps to deploy virtlet",
+           default=_default_virtlet_prepare_tests_steps_path)
+]
+
+virtlet_opts = [
+    ct.Cfg('virtlet_installed', ct.Boolean(),
+           help="", default=False),
+]
+
 _group_opts = [
     ('hardware', hardware_opts),
     ('underlay', underlay_opts),
@@ -133,6 +170,10 @@ _group_opts = [
     ('openstack_deploy', openstack_deploy_opts),
     ('openstack', openstack_opts),
     ('opencontrail', opencontrail_opts),
+    ('stack_light', sl_opts),
+    ('sl_deploy', sl_deploy_opts),
+    ('virtlet_deploy', virtlet_deploy_opts),
+    ('virtlet', virtlet_opts),
 ]
 
 
@@ -177,6 +218,20 @@ def register_opts(config):
     config.register_group(cfg.OptGroup(name='opencontrail',
                           title="Options for Juniper contrail-tests", help=""))
     config.register_opts(group='opencontrail', opts=opencontrail_opts)
+    config.register_group(cfg.OptGroup(name='stack_light',
+                                       title="StackLight config and credentials", help=""))
+    config.register_opts(group='stack_light', opts=sl_opts)
+    config.register_group(
+        cfg.OptGroup(name='sl_deploy',
+                 title="SL deploy config and credentials",
+                 help=""))
+    config.register_opts(group='sl_deploy', opts=sl_deploy_opts)
+    config.register_group(cfg.OptGroup(name='virtlet_deploy',
+                                       title='Virtlet deploy config', help=""))
+    config.register_opts(group='virtlet_deploy', opts=virtlet_deploy_opts)
+    config.register_group(cfg.OptGroup(name='virtlet',
+                                       title='Virtlet config', help=""))
+    config.register_opts(group='virtlet', opts=virtlet_opts)
     return config
 
 

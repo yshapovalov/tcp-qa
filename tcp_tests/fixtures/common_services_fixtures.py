@@ -19,7 +19,6 @@ import yaml
 
 from tcp_tests import logger
 from tcp_tests.helpers import ext
-from tcp_tests.helpers import utils
 from tcp_tests import settings
 from tcp_tests.managers import common_services_manager
 
@@ -27,14 +26,15 @@ LOG = logger.logger
 
 
 @pytest.fixture(scope='function')
-def common_services_actions(config, underlay):
+def common_services_actions(config, underlay, salt_actions):
     """Fixture that provides various actions for CommonServices
 
     :param config: fixture provides oslo.config
     :param underlay: fixture provides underlay manager
     :rtype: CommonServicesManager
     """
-    return common_services_manager.CommonServicesManager(config, underlay)
+    return common_services_manager.CommonServicesManager(config, underlay,
+                                                         salt_actions)
 
 
 @pytest.mark.revert_snapshot(ext.SNAPSHOT.common_services_deployed)
@@ -72,7 +72,7 @@ def common_services_deployed(revert_snapshot, request, config,
     # Create Salt cluster
     if not config.common_services.common_services_installed:
         steps_path = config.common_services_deploy.common_services_steps_path
-        commands = utils.read_template(steps_path)
+        commands = underlay.read_template(steps_path)
         common_services_actions.install(commands)
         hardware.create_snapshot(ext.SNAPSHOT.common_services_deployed)
 
